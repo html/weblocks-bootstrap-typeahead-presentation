@@ -45,53 +45,75 @@
 
 (defun render-bootstrap-typeahead (&key list-of-choices input-id input-name input-size input-value input-maxlength display-create-message (input-placeholder (translate "Type or choose ... ▼")))
   (send-script
-    (ps:ps 
-      (j-query 
-        (lambda ()
-          (let* ((source (eval (ps:LISP (format nil "(~A)" (json:encode-json-to-string list-of-choices)))))
-                 (input (j-query (ps:LISP (format nil "#~A" input-id))))
-                 (input-append (ps:chain input (parents ".maybe-input-append"))))
+    (concatenate ' string 
+"jQuery.fn.onAvailable = function(fn){
+  var sel = this.selector;
+  var timer;
+  var self = this;
+  if (this.length > 0) {
+    fn.call(this);   
+  }
+  else {
+    timer = setInterval(function(){
+       if (jQuery(sel).length > 0) {
+         fn.call(jQuery(sel));
+         clearInterval(timer);  
+       }
+    },50);  
+  }
+};"
 
-            (flet ((hide-or-show-clear-button-and-create-hint ()
-                     (if (and 
-                           (ps:chain input (val))
-                           (= -1 (ps:chain source 
-                                           (index-of 
-                                             (ps:chain input (val))))))
-                       (ps:chain input-append (siblings ".help-inline") (show))
-                       (ps:chain input-append (siblings ".help-inline") (hide)))
-                     (if (ps:chain input (val))
-                       (progn 
-                         (ps:chain input (siblings "button") (show))
-                         (ps:chain input-append (add-class "input-append")))
-                       (progn 
-                         (ps:chain input (siblings "button") (hide))
-                         (ps:chain input-append (remove-class "input-append")))))
-                   (maybe-show-list ()
-                     (hide-or-show-clear-button-and-create-hint)
-                     (if (ps:chain (j-query this) (val))
-                       (ps:chain (ps:chain 
-                                   (j-query this) (data "typeahead") 
-                                   (show)))
-                       (ps:chain (j-query this) (data "typeahead") 
-                                 (lookup)
-                                 (render source)
-                                 (show)))))
+(ps:ps 
+  (j-query 
+    (lambda ()
+      (ps:chain (j-query (ps:LISP (format nil "#~A" input-id)))
+                (on-available 
+                  (lambda ()
+                    (let* ((source (eval (ps:LISP (format nil "(~A)" (json:encode-json-to-string list-of-choices)))))
+                           (input (j-query (ps:LISP (format nil "#~A" input-id))))
+                           (input-append (ps:chain input (parents ".maybe-input-append"))))
 
-              (ps:chain 
-                input
-                (typeahead (ps:create 
-                             :source source))
-                (click maybe-show-list)
-                (keyup maybe-show-list)
-                (change (lambda ()
-                          (hide-or-show-clear-button-and-create-hint)))
-                (siblings "button")
-                (click (lambda ()
-                         (ps:chain input (val "") (focus) (click)))))
+                      (flet ((hide-or-show-clear-button-and-create-hint ()
+                               (if (and 
+                                     (ps:chain input (val))
+                                     (= -1 (ps:chain source 
+                                                     (index-of 
+                                                       (ps:chain input (val))))))
+                                 (ps:chain input-append (siblings ".help-inline") (show))
+                                 (ps:chain input-append (siblings ".help-inline") (hide)))
+                               (if (ps:chain input (val))
+                                 (progn 
+                                   (ps:chain input (siblings "button") (show))
+                                   (ps:chain input-append (add-class "input-append")))
+                                 (progn 
+                                   (ps:chain input (siblings "button") (hide))
+                                   (ps:chain input-append (remove-class "input-append")))))
+                             (maybe-show-list ()
+                               (hide-or-show-clear-button-and-create-hint)
+                               (if (ps:chain (j-query this) (val))
+                                 (ps:chain (ps:chain 
+                                             (j-query this) (data "typeahead") 
+                                             (show)))
+                                 (ps:chain (j-query this) (data "typeahead") 
+                                           (lookup)
+                                           (render source)
+                                           (show)))))
 
-              (hide-or-show-clear-button-and-create-hint)))))))
+                        (ps:chain 
+                          input
+                          (typeahead (ps:create 
+                                       :source source))
+                          (click maybe-show-list)
+                          (keyup maybe-show-list)
+                          (change (lambda ()
+                                    (hide-or-show-clear-button-and-create-hint)))
+                          (siblings "button")
+                          (click (lambda ()
+                                   (ps:chain input (val "") (focus) (click)))))
+                        (hide-or-show-clear-button-and-create-hint)))))))))))
   (with-yaclml 
+    (<:style :type "text/css"
+             ".dropdown-menu { z-index: 10000; }")
     (<:div :class "input-append maybe-input-append" :style "display:inline-block"
            (<:input :name input-name :type "text" :class "typeahead-input" :placeholder input-placeholder :data-provide "typeahead"
                     :value  input-value
