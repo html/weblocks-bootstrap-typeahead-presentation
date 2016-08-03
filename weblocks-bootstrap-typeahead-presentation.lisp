@@ -66,7 +66,8 @@
 (ps:ps 
   (j-query 
     (lambda ()
-      (ps:chain (j-query (ps:LISP (format nil "#~A" input-id)))
+      (weblocks-utils:ps-with-scripts ("/bootstrap/js/bootstrap-typeahead.js")
+        (ps:chain (j-query (ps:LISP (format nil "#~A" input-id)))
                 (on-available 
                   (lambda ()
                     (let* ((source (eval (ps:LISP (format nil "(~A)" (json:encode-json-to-string list-of-choices)))))
@@ -110,7 +111,7 @@
                           (siblings "button")
                           (click (lambda ()
                                    (ps:chain input (val "") (focus) (click)))))
-                        (hide-or-show-clear-button-and-create-hint)))))))))))
+                        (hide-or-show-clear-button-and-create-hint))))))))))))
   (with-yaclml 
     (<:style :type "text/css"
              ".dropdown-menu { z-index: 10000; }")
